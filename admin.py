@@ -207,18 +207,28 @@ def player_card(row: Dict, waitlisted: bool = False) -> None:
                     f"{esc('⏸️ Waitlisted — nothing owed' if waitlisted and not L.is_paid(row) else L.status_badge(row))}"
                     + (f"  \n<small>📝 {esc(row['admin_notes'])}</small>" if row.get("admin_notes") else ""),
                     unsafe_allow_html=True)
-        a, b = st.columns(2)
+        if HAS_COLS:
+            a, c, b = st.columns(3)  # Here | No-show | Mark paid
+        else:
+            (a, b), c = st.columns(2), None
         if not waiver_ok:
             a.button("📝 Got waiver", key=f"waiver{rid}", type="primary", use_container_width=True,
                      help="They've signed the waiver (only needed once, ever)",
                      on_click=set_waiver, args=(row, True))
         elif HAS_COLS:
             if here is True:
-                a.button("Undo here", key=f"here{rid}", use_container_width=True,
+                a.button("↩ Undo here", key=f"here{rid}", use_container_width=True,
                          on_click=write, args=(rid, L.attendance_update(None)))
             else:
                 a.button("✋ Here", key=f"here{rid}", type="primary", use_container_width=True,
                          on_click=write, args=(rid, L.attendance_update(True)))
+        if HAS_COLS:
+            if here is False:
+                c.button("↩ Undo no-show", key=f"noshow{rid}", use_container_width=True,
+                         on_click=write, args=(rid, L.attendance_update(None)))
+            else:
+                c.button("🚫 No-show", key=f"noshow{rid}", use_container_width=True,
+                         on_click=write, args=(rid, L.attendance_update(False)))
         is_open = st.session_state.get("panel") == f"p{rid}"
         label = ("✅ Paid · more" if L.is_paid(row) else "💰 Mark paid") + (" ▴" if is_open else "")
         b.button(label, key=f"open{rid}", use_container_width=True, on_click=toggle_panel, args=(f"p{rid}",))
@@ -243,15 +253,8 @@ def player_card(row: Dict, waitlisted: bool = False) -> None:
                       on_click=set_waiver, args=(row, False))
         if HAS_COLS:
             st.text_input("Note", value=row.get("admin_notes") or "", key=f"note{rid}")
-            n1, n2 = st.columns(2)
-            n1.button("Save note", key=f"savenote{rid}", use_container_width=True,
+            st.button("Save note", key=f"savenote{rid}", use_container_width=True,
                       on_click=lambda: write(rid, {"admin_notes": st.session_state[f"note{rid}"].strip() or None}))
-            if here is False:
-                n2.button("Clear no-show", key=f"noshow{rid}", use_container_width=True,
-                          on_click=write, args=(rid, L.attendance_update(None)))
-            else:
-                n2.button("🚫 No-show", key=f"noshow{rid}", use_container_width=True,
-                          on_click=write, args=(rid, L.attendance_update(False)))
 
 
 def field_page() -> None:

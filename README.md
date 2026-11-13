@@ -57,7 +57,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
   - **📝 Got waiver** shows instead of **Here** (with "⚠️ no waiver" on the card) until the
     player has signed the waiver. Players only sign it once, ever: after you tap it they never
     show as missing a waiver again, in any week. Undo it from the player's **Mark paid** panel.
-  - **✋ Here** marks attendance. Tap again to undo.
+  - **✋ Here** and **🚫 No-show** mark attendance. Tap **↩ Undo** to clear either one.
   - **💰 Mark paid** opens a panel with venmo/zelle/cash (it starts on whatever they declared),
     the amount (default $20) and **Record payment for NAME**. The same panel has a note field
     and **No-show**.
