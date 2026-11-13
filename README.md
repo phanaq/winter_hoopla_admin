@@ -16,6 +16,10 @@ once safely. It adds these columns to `signups`: `amount_paid`, `paid_via`, `pai
 The app still works before the migration, but it shows a yellow **"Run the migration"** banner and
 can only mark people paid (`paid_verified`). After you run it, tap **"I ran it — recheck"**.
 
+Waivers need a second migration, `supabase/migrations/20261113000000_waivers.sql`. It creates a
+`waivers` table with one row per player (keyed by their lowercased signup email), because a signed
+waiver covers them for every week and season.
+
 ## 2. Deploy on Streamlit Community Cloud (second app)
 
 1. Go to share.streamlit.io, choose **Create app**, pick this repo (`winter_hoopla_admin`) and branch `main`, and set
@@ -50,6 +54,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 - **At the field** (the default screen): opens on today's or the next session (Chicago time).
   The top line shows how many people are here, $ collected and $ owed. People who still owe are
   listed first, and the **Owes me** filter shows only them. Each player has two buttons:
+  - **📝 Got waiver** shows instead of **Here** (with "⚠️ no waiver" on the card) until the
+    player has signed the waiver. Players only sign it once, ever: after you tap it they never
+    show as missing a waiver again, in any week. Undo it from the player's **Mark paid** panel.
   - **✋ Here** marks attendance. Tap again to undo.
   - **💰 Mark paid** opens a panel with venmo/zelle/cash (it starts on whatever they declared),
     the amount (default $20) and **Record payment for NAME**. The same panel has a note field

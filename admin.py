@@ -105,8 +105,49 @@ def write(row_id: int, values: Dict) -> None:
         st.session_state.flash = ("error", f"Couldn't save: {e}")
 
 
+WAIVERS = "waivers"
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def has_waivers_table() -> bool:
+    """False until supabase/migrations/20261113000000_waivers.sql has been run."""
+    try:
+        get_db().table(WAIVERS).select("email").limit(1).execute()
+        return True
+    except Exception:
+        return False
+
+
+def load_waivers() -> Dict[str, Dict]:
+    if not HAS_WAIVERS:
+        return {}
+    data = get_db().table(WAIVERS).select("*").execute().data or []
+    return {w["email"].lower(): w for w in data}
+
+
+def set_waiver(row: Dict, signed: bool) -> None:
+    """Waivers are per person (signed once, no expiration), keyed by lowercased email."""
+    email = row["email"].strip().lower()
+    try:
+        if signed:
+            get_db().table(WAIVERS).upsert({"email": email, "name": row["name"],
+                                            "signed_at": datetime.now(L.TZ).isoformat()}).execute()
+        else:
+            get_db().table(WAIVERS).delete().eq("email", email).execute()
+        st.session_state.flash = ("success", "Saved")
+    except Exception as e:
+        st.session_state.flash = ("error", f"Couldn't save: {e}")
+    st.session_state.panel = None
+
+
+def has_waiver(row: Dict) -> bool:
+    return row["email"].strip().lower() in waivers
+
+
 HAS_COLS = has_payment_columns()
+HAS_WAIVERS = has_waivers_table()
 rows = load_rows()
+waivers = load_waivers()
 
 if not HAS_COLS:
     st.warning(
@@ -116,6 +157,14 @@ if not HAS_COLS:
         icon="⚠️",
     )
     st.button("I ran it — recheck", on_click=has_payment_columns.clear)
+
+if not HAS_WAIVERS:
+    st.warning(
+        "**Run the migration** `supabase/migrations/20261113000000_waivers.sql` in the Supabase "
+        "SQL Editor to track waivers.",
+        icon="⚠️",
+    )
+    st.button("I ran it — recheck", key="recheck_waivers", on_click=has_waivers_table.clear)
 
 flash = st.session_state.pop("flash", None)
 if flash:
@@ -151,12 +200,19 @@ def player_card(row: Dict, waitlisted: bool = False) -> None:
     with st.container(border=True):
         here = row.get("attended")
         mark = " · ✋ here" if here is True else (" · 🚫 no-show" if here is False else "")
+        waiver_ok = has_waiver(row) if HAS_WAIVERS else True
+        if HAS_WAIVERS and not waiver_ok:
+            mark += " · ⚠️ **no waiver**"
         st.markdown(f"**{esc(row['name'])}** · {SIDE.get(row['gender_match'], '')}{mark}  \n"
                     f"{esc('⏸️ Waitlisted — nothing owed' if waitlisted and not L.is_paid(row) else L.status_badge(row))}"
                     + (f"  \n<small>📝 {esc(row['admin_notes'])}</small>" if row.get("admin_notes") else ""),
                     unsafe_allow_html=True)
         a, b = st.columns(2)
-        if HAS_COLS:
+        if not waiver_ok:
+            a.button("📝 Got waiver", key=f"waiver{rid}", type="primary", use_container_width=True,
+                     help="They've signed the waiver (only needed once, ever)",
+                     on_click=set_waiver, args=(row, True))
+        elif HAS_COLS:
             if here is True:
                 a.button("Undo here", key=f"here{rid}", use_container_width=True,
                          on_click=write, args=(rid, L.attendance_update(None)))
@@ -180,6 +236,11 @@ def player_card(row: Dict, waitlisted: bool = False) -> None:
                       on_click=lambda: write_and_close(rid, L.payment_update(
                           st.session_state.get(f"via{rid}") or default_via(row),
                           st.session_state.get(f"amt{rid}", L.PRICE), has_cols=HAS_COLS)))
+        if HAS_WAIVERS and waiver_ok:
+            signed = L.parse_ts(waivers[row["email"].strip().lower()].get("signed_at"))
+            st.caption(f"📝 Waiver signed {signed.astimezone(L.TZ).strftime('%b %-d, %Y') if signed else ''}")
+            st.button("Undo waiver", key=f"unwaiver{rid}", use_container_width=True,
+                      on_click=set_waiver, args=(row, False))
         if HAS_COLS:
             st.text_input("Note", value=row.get("admin_notes") or "", key=f"note{rid}")
             n1, n2 = st.columns(2)
@@ -197,13 +258,16 @@ def field_page() -> None:
     w = L.week_summary(rows, session)
     roster, waitlist = w["roster"], w["waitlist"]
     here = f"✋ **{w['here']}**/{len(roster)} here · " if HAS_COLS else ""
+    no_waiver = [r for r in roster + waitlist if HAS_WAIVERS and not has_waiver(r)]
+    waiver_txt = f" · 📝 **{len(no_waiver)}** need waiver" if HAS_WAIVERS else ""
     st.markdown(f"{here}💰 **\\${w['collected_all']:g}** in · "
-                f"⏳ **\\${w['outstanding_amount']:g}** owed ({w['outstanding']})")
+                f"⏳ **\\${w['outstanding_amount']:g}** owed ({w['outstanding']}){waiver_txt}")
     if not roster and not waitlist:
         st.info("No signups for this week yet.")
         return
     f1, f2 = st.columns([6, 1])
-    flt = f1.segmented_control("Show", ["Owes me", "Not here", "All"] if HAS_COLS else ["Owes me", "All"], default="All",
+    options = ["Owes me"] + (["Not here"] if HAS_COLS else []) + (["No waiver"] if HAS_WAIVERS else []) + ["All"]
+    flt = f1.segmented_control("Show", options, default="All",
                                key="filter", label_visibility="collapsed") or "All"
     f2.button("↻", help="Refresh (pick up taps from other devices)", key="refresh")
     people = sorted(roster, key=lambda r: (not L.owes(r), r["name"].lower()))
@@ -211,6 +275,8 @@ def field_page() -> None:
         people = [r for r in people if L.owes(r)]
     elif flt == "Not here":
         people = [r for r in people if r.get("attended") is not True]
+    elif flt == "No waiver":
+        people = [r for r in people if not has_waiver(r)]
     st.caption(f"{len(people)} of {len(roster)} rostered · owes first")
     for r in people:
         player_card(r)
@@ -280,12 +346,14 @@ def season_page() -> None:
     if df.empty:
         st.info("No signups yet.")
         return
+    if HAS_WAIVERS:
+        df.insert(1, "waiver", df["email"].map(lambda e: "✅" if e in waivers else "—"))
     t = L.refund_totals(L.refund_rows(rows))
     a, b, c = st.columns(3)
     a.metric("Collected", f"${df['collected'].sum():g}")
     b.metric("Unpaid", f"${df['owed'].sum():g}")
     c.metric("Refunds owed", f"${t['owed']:g}")
-    cols = {"name": "Name", "rostered_weeks": "Rostered", "showed_up": "Showed", "no_shows": "No-show",
+    cols = {"name": "Name", **({"waiver": "Waiver"} if HAS_WAIVERS else {}), "rostered_weeks": "Rostered", "showed_up": "Showed", "no_shows": "No-show",
             "waitlisted_weeks": "Waitlist", "cancelled": "Cancelled", "weeks_paid": "Paid wks",
             "collected": "Paid $", "owed": "Owes $", "refund_owed": "Refund owed $", "refunded": "Refunded $",
             "weeks": "Weeks", "email": "Email"}
@@ -357,6 +425,8 @@ def export_page() -> None:
     w = L.week_summary(rows, session)
     week = [dict(r, list="roster", status=L.payment_status(r)) for r in w["roster"]] + \
            [dict(r, list="waitlist", status="Waitlisted") for r in w["waitlist"]]
+    if HAS_WAIVERS:
+        week = [dict(r, waiver_signed=has_waiver(r)) for r in week]
     st.download_button(f"⬇️ {L.fmt_session(session)} CSV", pd.DataFrame(week).to_csv(index=False),
                        f"hoopla_{session}.csv", "text/csv", use_container_width=True, disabled=not week)
     st.download_button("⬇️ Whole season (all rows) CSV", pd.DataFrame(rows).to_csv(index=False),
