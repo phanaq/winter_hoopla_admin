@@ -16,7 +16,7 @@ import admin_logic as L
 
 TABLE = "signups"
 SIDE = {"mmp": "MMP", "wmp": "WMP"}
-VENMO_HANDLE = "aphan"
+VENMO_HANDLE = "WinterHoopla"
 
 st.set_page_config(page_title="Hoopla Admin", page_icon="🥏", layout="centered")
 st.markdown(
