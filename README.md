@@ -96,7 +96,7 @@ description like "Zelle payment from JANE DOE Conf# …". Only positive amounts 
 
 For each cancelled signup, the app rebuilds that session's roster as it stood just before the
 cancellation. That means the rows created before `cancelled_at` that weren't already cancelled,
-with each side taking its first 10 in id order.
+with each side taking its first SPOTS[side] in id order (10 MMP, 12 WMP).
 
 - A payment was recorded → **owed**
 - Was on the roster and declared Venmo/Zelle → **owed** (check you actually got it)

@@ -20,7 +20,7 @@ NUM_SESSIONS = 7
 SESSIONS = [FIRST_SESSION + timedelta(weeks=i) for i in range(NUM_SESSIONS)]
 END_TIME = time(22, 15)
 PRICE = 20.0
-MAX_PLAYERS_PER_SIDE = 10
+SPOTS = {"mmp": 10, "wmp": 12}  # must match SPOTS in winter_hoopla/app.py
 
 PAID_VIAS = ["venmo", "zelle", "cash"]
 REFUND_STATUSES = ["owed", "refunded", "not_needed"]
@@ -74,12 +74,12 @@ def fmt_session(d: date) -> str:
 # Roster
 # ---------------------------------------------------------------------------
 def build_roster(rows: Iterable[Dict]) -> Tuple[List[Dict], List[Dict]]:
-    """Same rule as app.py: in id order, each gender side takes the first 10; the rest wait."""
+    """Same rule as app.py: in id order, each gender side takes its first SPOTS[side]; the rest wait."""
     counts = {"mmp": 0, "wmp": 0}
     roster, waitlist = [], []
     for row in sorted(rows, key=lambda r: r["id"]):
         side = row["gender_match"]
-        if counts.get(side, 0) < MAX_PLAYERS_PER_SIDE:
+        if counts.get(side, 0) < SPOTS.get(side, 0):
             counts[side] = counts.get(side, 0) + 1
             roster.append(row)
         else:
