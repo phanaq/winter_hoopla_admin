@@ -59,13 +59,13 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
     show as missing a waiver again, in any week. Undo it from the player's **Mark paid** panel.
   - **✋ Here** and **🚫 No-show** mark attendance. Tap **↩ Undo** to clear either one.
   - **💰 Mark paid** opens a panel with venmo/zelle/cash (it starts on whatever they declared),
-    the amount (default $18) and **Record payment for NAME**. The same panel has a note field
+    the amount (default $20) and **Record payment for NAME**. The same panel has a note field
     and **No-show**.
 
   Every tap saves that one player right away, so two phones stay in sync. Tap **↻** to pick up
   changes made on the other phone. Waitlisted players are in the collapsed **Waitlist** section.
   You can mark them here or paid too, in case they got pulled in at the field.
-- **Status badges:** ✅ Paid · ❓ Says Venmo/Zelle — verify · 💵 Owes $18 (in person) ·
+- **Status badges:** ✅ Paid · ❓ Says Venmo/Zelle — verify · 💵 Owes $20 (in person) ·
   ⚠️ Nothing declared (moved up from the waitlist, so they were only emailed payment options).
 - **Refunds:** built automatically from cancellations. Tap **Update refund** to mark someone
   refunded (amount and date), owed, or not needed.
@@ -85,7 +85,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
    - **Date:** a play date in the note ("11/23", "Nov 23", "week 2") wins. Payments with no date
      only count from the Monday before to the Thursday after that session.
 4. Check or change each match in the dropdowns, then tap **Record selected payments**. Amounts
-   other than $18 are flagged. A $36 "2 weeks" payment is recorded for this week only, so add a
+   other than $20 are flagged. A $40 "2 weeks" payment is recorded for this week only, so add a
    note for the other week. Each Venmo transaction ID is saved in `payment_ref`, so importing the
    same file again won't record anything twice.
 

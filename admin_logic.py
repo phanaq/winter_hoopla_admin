@@ -19,7 +19,7 @@ FIRST_SESSION = date(2026, 11, 16)  # Mondays
 NUM_SESSIONS = 7
 SESSIONS = [FIRST_SESSION + timedelta(weeks=i) for i in range(NUM_SESSIONS)]
 END_TIME = time(22, 15)
-PRICE = 18.0  # standard rate (sliding scale $10-25)
+PRICE = 20.0  # standard rate (sliding scale $10-30)
 SPOTS = {"mmp": 10, "wmp": 12}  # must match SPOTS / SPOTS_OVERRIDES in winter_hoopla/app.py
 SPOTS_OVERRIDES = {
     date(2026, 11, 23): {"mmp": 11},
