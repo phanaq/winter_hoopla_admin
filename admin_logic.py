@@ -20,7 +20,18 @@ NUM_SESSIONS = 7
 SESSIONS = [FIRST_SESSION + timedelta(weeks=i) for i in range(NUM_SESSIONS)]
 END_TIME = time(22, 15)
 PRICE = 20.0
-SPOTS = {"mmp": 10, "wmp": 12}  # must match SPOTS in winter_hoopla/app.py
+SPOTS = {"mmp": 10, "wmp": 12}  # must match SPOTS / SPOTS_OVERRIDES in winter_hoopla/app.py
+SPOTS_OVERRIDES = {
+    date(2026, 11, 23): {"mmp": 11},
+    date(2026, 11, 30): {"mmp": 11},
+    date(2026, 12, 7): {"mmp": 11},
+    date(2026, 12, 14): {"mmp": 11},
+}
+
+
+def spots_for(session, side: str) -> int:
+    d = session if isinstance(session, date) else date.fromisoformat(str(session)[:10])
+    return SPOTS_OVERRIDES.get(d, {}).get(side, SPOTS.get(side, 0))
 
 PAID_VIAS = ["venmo", "zelle", "cash"]
 REFUND_STATUSES = ["owed", "refunded", "not_needed"]
@@ -74,12 +85,12 @@ def fmt_session(d: date) -> str:
 # Roster
 # ---------------------------------------------------------------------------
 def build_roster(rows: Iterable[Dict]) -> Tuple[List[Dict], List[Dict]]:
-    """Same rule as app.py: in id order, each gender side takes its first SPOTS[side]; the rest wait."""
+    """Same rule as app.py: in id order, each gender side takes its first spots_for(session, side); the rest wait."""
     counts = {"mmp": 0, "wmp": 0}
     roster, waitlist = [], []
     for row in sorted(rows, key=lambda r: r["id"]):
         side = row["gender_match"]
-        if counts.get(side, 0) < SPOTS.get(side, 0):
+        if counts.get(side, 0) < spots_for(row["session_date"], side):
             counts[side] = counts.get(side, 0) + 1
             roster.append(row)
         else:
